@@ -1,0 +1,106 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Navbar from '@/components/Navbar';
+import Sidebar from '@/components/Sidebar';
+import TrafficLog from '@/components/TrafficLog';
+import DashboardCharts from '@/components/DashboardCharts';
+import ThreatPanel from '@/components/ThreatPanel';
+import InvestigationAgent from '@/components/InvestigationAgent';
+import SimulationCenter from '@/components/SimulationCenter';
+import VulnMapping from '@/components/VulnMapping';
+import ThreatTimeline from '@/components/ThreatTimeline';
+import { Activity, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
+
+export default function Dashboard() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [threats, setThreats] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    active_threats: 0,
+    total_requests: 1542,
+    risk_score_avg: 12
+  });
+  const [selectedThreat, setSelectedThreat] = useState<any>(null);
+
+  useEffect(() => {
+    // Initial fetch for threats
+    fetch('http://localhost:8000/api/threats')
+      .then(res => res.json())
+      .then(data => {
+        setThreats(data);
+        if (data.length > 0) setSelectedThreat(data[0]);
+      })
+      .catch(err => console.error("Fetch threats error:", err));
+
+    // WebSocket for real-time traffic
+    const ws = new WebSocket('ws://localhost:8000/ws/traffic');
+    
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'traffic') {
+          const newLog = message.data;
+          setLogs(prev => [...prev.slice(-49), newLog]);
+          setStats(message.stats);
+          
+          if (newLog.investigation) {
+            setThreats(prev => [newLog, ...prev.slice(0, 19)]);
+            setSelectedThreat(newLog);
+          }
+        }
+      } catch (e) {
+        console.error("WS error:", e);
+      }
+    };
+
+    return () => ws.close();
+  }, []);
+
+  const statCards = [
+    { label: 'Active Threats', value: stats.active_threats, icon: ShieldAlert, color: 'text-alert-red' },
+    { label: 'Avg Risk Score', value: stats.risk_score_avg.toFixed(1), icon: Activity, color: 'text-warning-yellow' },
+    { label: 'Total Requests', value: stats.total_requests, icon: ShieldCheck, color: 'text-success-green' },
+    { label: 'AI Confidence', value: '98.4%', icon: Zap, color: 'text-accent-blue' },
+  ];
+
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <div className="flex flex-1">
+        <Sidebar />
+        <main className="flex-1 p-6 overflow-y-auto">
+          {/* Stats Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            {statCards.map((stat, idx) => (
+              <div key={idx} className="bg-card p-4 rounded-xl border border-white/10 flex items-center justify-between glow-blue">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                </div>
+                <div className={`${stat.color} bg-white/5 p-3 rounded-lg`}>
+                  <stat.icon size={24} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+            <div className="xl:col-span-2 space-y-6">
+              <DashboardCharts data={logs} />
+              <TrafficLog logs={logs} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <SimulationCenter />
+                <VulnMapping />
+              </div>
+              <ThreatTimeline threats={threats} />
+            </div>
+            <div className="space-y-6">
+              <ThreatPanel threats={threats} />
+              <InvestigationAgent threat={selectedThreat} />
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
