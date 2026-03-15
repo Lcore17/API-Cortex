@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { Terminal as TerminalIcon, ShieldCheck, ShieldAlert, HelpCircle, Globe, Database, MapPin, Eye, Clock } from 'lucide-react';
 
 interface TrafficLogProps {
@@ -8,12 +8,6 @@ interface TrafficLogProps {
 }
 
 export default function TrafficLog({ logs = [] }: TrafficLogProps) {
-  const logEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
-
   return (
     <div className="bg-black/80 rounded-xl border border-white/10 overflow-hidden flex flex-col h-[400px]">
       <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex items-center justify-between">
@@ -97,7 +91,6 @@ export default function TrafficLog({ logs = [] }: TrafficLogProps) {
             )}
           </div>
         ))}
-        <div ref={logEndRef} />
       </div>
     </div>
   );

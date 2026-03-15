@@ -2,19 +2,29 @@
 
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
-const data = [
-  { subject: 'Injection', A: 120, fullMark: 150 },
-  { subject: 'Auth', A: 98, fullMark: 150 },
-  { subject: 'Data Exposure', A: 86, fullMark: 150 },
-  { subject: 'Rate Limiting', A: 99, fullMark: 150 },
-  { subject: 'Mass Assignment', A: 85, fullMark: 150 },
-  { subject: 'Security Config', A: 65, fullMark: 150 },
+interface VulnMappingPoint {
+  subject: string;
+  score: number;
+  fullMark: number;
+}
+
+interface VulnMappingProps {
+  data?: VulnMappingPoint[];
+  title?: string;
+}
+
+const defaultData: VulnMappingPoint[] = [
+  { subject: 'SQL Injection', score: 0, fullMark: 100 },
+  { subject: 'DDoS', score: 0, fullMark: 100 },
+  { subject: 'Brute Force', score: 0, fullMark: 100 },
+  { subject: 'Geo Threat', score: 0, fullMark: 100 },
+  { subject: 'Shadow API', score: 0, fullMark: 100 },
 ];
 
-export default function VulnMapping() {
+export default function VulnMapping({ data = defaultData, title = 'Vulnerability Mapping' }: VulnMappingProps) {
   return (
     <div className="bg-card p-6 rounded-xl border border-white/10 h-full">
-      <h3 className="text-sm font-semibold mb-6 text-gray-400 uppercase tracking-wider">Vulnerability Mapping</h3>
+      <h3 className="text-sm font-semibold mb-6 text-gray-400 uppercase tracking-wider">{title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
@@ -23,9 +33,9 @@ export default function VulnMapping() {
             <PolarRadiusAxis hide />
             <Radar
               name="Threats"
-              dataKey="A"
-              stroke="#7A5CFF"
-              fill="#7A5CFF"
+              dataKey="score"
+              stroke="#06b6d4"
+              fill="#06b6d4"
               fillOpacity={0.6}
             />
           </RadarChart>

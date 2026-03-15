@@ -6,62 +6,142 @@ import Sidebar from '@/components/Sidebar';
 import VulnMapping from '@/components/VulnMapping';
 import { Network, Shield, AlertCircle } from 'lucide-react';
 
+interface ApiNode {
+  name: string;
+  endpoint: string;
+  risk: number;
+  criticality: number;
+  request_count: number;
+}
+
+interface VulnerabilityItem {
+  type: string;
+  count: number;
+  severity: 'high' | 'medium' | 'low';
+}
+
+interface DependencyEdge {
+  from: string;
+  to: string;
+  type: string;
+}
+
+interface MappingData {
+  apis: ApiNode[];
+  vulnerabilities: VulnerabilityItem[];
+  dependencies: DependencyEdge[];
+}
+
 export default function MappingPage() {
-  const [mappingData, setMappingData] = useState({
+  const [mappingData, setMappingData] = useState<MappingData>({
     apis: [],
     vulnerabilities: [],
     dependencies: []
   });
-  const [selectedApi, setSelectedApi] = useState<any>(null);
+  const [selectedApi, setSelectedApi] = useState<ApiNode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchMapping = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/api-map');
-        const data = await response.json();
-        
-        // Parse API and vulnerability data
-        const apis = data.apis || [];
-        const vulns = data.vulnerabilities || [];
-        const deps = data.dependencies || [];
+        const [graphRes, logsRes] = await Promise.all([
+          fetch('http://localhost:8000/api/dependency-graph'),
+          fetch('http://localhost:8000/api/logs?limit=200')
+        ]);
 
-        setMappingData({ apis, vulnerabilities: vulns, dependencies: deps });
-        if (apis.length > 0) setSelectedApi(apis[0]);
+        const graphData = await graphRes.json();
+        const logsData = await logsRes.json();
+
+        const graph = graphData?.graph || {};
+        const criticality = graphData?.criticality_scores || {};
+        const logs = Array.isArray(logsData) ? logsData : [];
+
+        const apiSet = new Set<string>(Object.keys(graph));
+        Object.values(graph).forEach((targets: any) => {
+          if (Array.isArray(targets)) {
+            targets.forEach((target: string) => apiSet.add(target));
+          }
+        });
+
+        const apis: ApiNode[] = Array.from(apiSet).map((endpoint) => {
+          const endpointLogs = logs.filter((l: any) => l.endpoint === endpoint);
+          const avgRisk = endpointLogs.length > 0
+            ? Math.round(endpointLogs.reduce((sum: number, l: any) => sum + (l.risk_score || 0), 0) / endpointLogs.length)
+            : 0;
+          const baseRisk = Number(criticality[endpoint] || 40);
+          return {
+            name: endpoint,
+            endpoint,
+            risk: Math.round((baseRisk + avgRisk) / 2),
+            criticality: baseRisk,
+            request_count: endpointLogs.length
+          };
+        }).sort((a, b) => b.risk - a.risk);
+
+        const dependencies: DependencyEdge[] = Object.entries(graph).flatMap(([from, targets]: [string, any]) =>
+          (Array.isArray(targets) ? targets : []).map((to: string) => ({ from, to, type: 'call-chain' }))
+        );
+
+        const vulnMap = new Map<string, VulnerabilityItem>();
+        logs
+          .filter((l: any) => l.threat_type && l.threat_type !== 'None')
+          .forEach((log: any) => {
+            const type = log.threat_type || 'Unknown';
+            const risk = log.risk_score || 0;
+            const prev: VulnerabilityItem = vulnMap.get(type) || {
+              type,
+              count: 0,
+              severity: risk >= 80 ? 'high' : risk >= 60 ? 'medium' : 'low'
+            };
+            prev.count += 1;
+            if (risk >= 80) prev.severity = 'high';
+            else if (risk >= 60 && prev.severity !== 'high') prev.severity = 'medium';
+            vulnMap.set(type, prev);
+          });
+
+        const vulnerabilities = Array.from(vulnMap.values()).sort((a, b) => b.count - a.count);
+
+        setMappingData({ apis, vulnerabilities, dependencies });
+        setSelectedApi((prev) => {
+          if (prev && apis.some((a) => a.endpoint === prev.endpoint)) {
+            return apis.find((a) => a.endpoint === prev.endpoint) || apis[0] || null;
+          }
+          return apis[0] || null;
+        });
       } catch (error) {
         console.error('Failed to fetch mapping:', error);
-        // Use mock data for demo
-        setMappingData({
-          apis: [
-            { name: '/api/login', risk: 45, endpoint: '/api/login' },
-            { name: '/api/payment', risk: 92, endpoint: '/api/payment' },
-            { name: '/api/users', risk: 60, endpoint: '/api/users' },
-            { name: '/api/admin', risk: 85, endpoint: '/api/admin' }
-          ],
-          vulnerabilities: [
-            { type: 'SQL Injection', count: 3, severity: 'high' },
-            { type: 'XSS', count: 2, severity: 'medium' },
-            { type: 'CSRF', count: 1, severity: 'medium' }
-          ],
-          dependencies: [
-            { from: '/api/login', to: '/api/users', type: 'auth' },
-            { from: '/api/payment', to: '/api/admin', type: 'audit' }
-          ]
-        });
+        setMappingData({ apis: [], vulnerabilities: [], dependencies: [] });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchMapping();
+
+    const pollInterval = setInterval(fetchMapping, 4000);
+    const ws = new WebSocket('ws://localhost:8000/ws/traffic');
+    ws.onmessage = () => fetchMapping();
+
+    return () => {
+      ws.close();
+      clearInterval(pollInterval);
+    };
   }, []);
 
+  const selectedEndpoint = selectedApi?.endpoint || selectedApi?.name;
+  const selectedDependencies = mappingData.dependencies.filter((d) => d.from === selectedEndpoint);
+  const radarData = mappingData.vulnerabilities.slice(0, 6).map((v) => ({
+    subject: v.type,
+    score: Math.min(100, (v.count || 0) * (v.severity === 'high' ? 25 : v.severity === 'medium' ? 18 : 12)),
+    fullMark: 100
+  }));
+
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-950 to-slate-900">
       <Navbar />
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-6 overflow-y-auto bg-gradient-to-br from-slate-950 to-slate-900">
+        <main className="flex-1 p-6 overflow-y-auto">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Vulnerability Mapping</h1>
@@ -140,6 +220,12 @@ export default function MappingPage() {
                       </div>
                     </div>
 
+                    {/* Vulnerability Radar */}
+                    <VulnMapping
+                      title={`Threat Pattern Map ${selectedEndpoint ? `- ${selectedEndpoint}` : ''}`}
+                      data={radarData.length > 0 ? radarData : undefined}
+                    />
+
                     {/* Vulnerabilities */}
                     <div className="bg-card border border-white/10 rounded-lg p-6">
                       <h3 className="text-lg font-bold flex items-center mb-4">
@@ -147,7 +233,7 @@ export default function MappingPage() {
                         Vulnerabilities
                       </h3>
                       <div className="space-y-3">
-                        {mappingData.vulnerabilities.map((vuln, idx) => (
+                        {mappingData.vulnerabilities.length > 0 ? mappingData.vulnerabilities.map((vuln, idx) => (
                           <div key={idx} className="flex items-start justify-between p-3 bg-slate-800/50 rounded">
                             <div>
                               <p className="font-semibold text-sm">{vuln.type}</p>
@@ -156,7 +242,9 @@ export default function MappingPage() {
                                   className={`px-2 py-1 rounded ${
                                     vuln.severity === 'high'
                                       ? 'bg-red-500/20 text-red-400'
-                                      : 'bg-yellow-500/20 text-yellow-400'
+                                      : vuln.severity === 'medium'
+                                      ? 'bg-yellow-500/20 text-yellow-400'
+                                      : 'bg-green-500/20 text-green-400'
                                   }`}
                                 >
                                   {vuln.severity}
@@ -165,7 +253,9 @@ export default function MappingPage() {
                             </div>
                             <span className="text-sm font-bold text-red-400">{vuln.count}</span>
                           </div>
-                        ))}
+                        )) : (
+                          <p className="text-gray-400 text-sm text-center py-4">No vulnerabilities detected yet</p>
+                        )}
                       </div>
                     </div>
 
@@ -176,16 +266,13 @@ export default function MappingPage() {
                         Dependencies
                       </h3>
                       <div className="space-y-3">
-                        {mappingData.dependencies
-                          .filter(d => d.from === (selectedApi.endpoint || selectedApi.name))
-                          .map((dep, idx) => (
+                        {selectedDependencies.map((dep, idx) => (
                             <div key={idx} className="flex items-center justify-between p-3 bg-slate-800/50 rounded">
                               <p className="font-mono text-xs text-cyan-400">{dep.to}</p>
                               <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">{dep.type}</span>
                             </div>
                           ))}
-                        {mappingData.dependencies.filter(d => d.from === (selectedApi.endpoint || selectedApi.name))
-                          .length === 0 && (
+                        {selectedDependencies.length === 0 && (
                           <p className="text-gray-400 text-sm text-center py-4">No dependencies found</p>
                         )}
                       </div>

@@ -7,17 +7,19 @@ interface ThreatPanelProps {
 }
 
 export default function ThreatPanel({ threats }: ThreatPanelProps) {
-  const latestThreats = threats.slice(-5).reverse();
+  // Filter out resolved threats to show only active threats
+  const activeThreats = threats.filter((t: any) => t.status !== 'resolved');
+  const latestThreats = activeThreats.slice(-5).reverse();
 
   return (
     <div className="bg-card p-6 rounded-xl border border-white/10 h-full">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold flex items-center gap-2">
           <ShieldAlert className="text-alert-red" />
-          Detected Threats
+          Active Threats
         </h3>
         <span className="bg-alert-red/20 text-alert-red text-xs px-2 py-1 rounded font-bold">
-          {threats.length} TOTAL
+          {activeThreats.length} LIVE
         </span>
       </div>
 
@@ -25,7 +27,7 @@ export default function ThreatPanel({ threats }: ThreatPanelProps) {
         {latestThreats.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500 border-2 border-dashed border-white/5 rounded-xl">
             <CheckCircle2 size={48} className="text-success-green mb-2 opacity-20" />
-            <p className="text-sm font-medium">No threats detected in the last hour</p>
+            <p className="text-sm font-medium">No active threats detected</p>
           </div>
         )}
         {latestThreats.map((threat, idx) => (

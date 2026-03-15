@@ -4,14 +4,12 @@ import {
   LayoutDashboard, 
   Activity, 
   ShieldAlert, 
-  Terminal, 
-  BarChart3, 
   Settings, 
   FileText, 
   Map, 
   Zap,
-  Search,
-  CheckCircle2
+  CheckCircle2,
+  BrainCircuit
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -20,9 +18,8 @@ const menuItems = [
   { icon: CheckCircle2, label: 'Security Features', href: '/features' },
   { icon: Activity, label: 'Traffic Monitor', href: '/traffic' },
   { icon: ShieldAlert, label: 'Threat Center', href: '/threats' },
+  { icon: BrainCircuit, label: 'AI Investigator', href: '/investigator' },
   { icon: Zap, label: 'Attack Simulator', href: '/simulator' },
-  { icon: BarChart3, label: 'Analytics', href: '/analytics' },
-  { icon: Search, label: 'AI Investigator', href: '/investigator' },
   { icon: Map, label: 'Vuln Mapping', href: '/mapping' },
   { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: Settings, label: 'Settings', href: '/settings' },
@@ -32,7 +29,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 border-r border-white/10 flex flex-col h-[calc(100vh-64px)] bg-card/30 backdrop-blur-sm shrink-0">
+    <aside className="w-64 border-r border-white/10 flex flex-col h-[calc(100vh-64px)] max-h-[calc(100vh-64px)] bg-card/30 backdrop-blur-sm shrink-0 sticky top-16 self-start overflow-y-auto">
       <div className="flex-1 py-6">
         <ul className="space-y-2 px-4">
           {menuItems.map((item) => {

@@ -6,31 +6,57 @@ import Sidebar from '@/components/Sidebar';
 import TrafficLog from '@/components/TrafficLog';
 import DashboardCharts from '@/components/DashboardCharts';
 import ThreatPanel from '@/components/ThreatPanel';
-import InvestigationAgent from '@/components/InvestigationAgent';
 import SimulationCenter from '@/components/SimulationCenter';
 import VulnMapping from '@/components/VulnMapping';
 import ThreatTimeline from '@/components/ThreatTimeline';
-import { Activity, ShieldAlert, ShieldCheck, Zap } from 'lucide-react';
+import { Activity, ShieldAlert, ShieldCheck, Zap, CheckCircle2 } from 'lucide-react';
 
 export default function Dashboard() {
   const [logs, setLogs] = useState<any[]>([]);
   const [threats, setThreats] = useState<any[]>([]);
+  const [resolvedThreats, setResolvedThreats] = useState(0);
   const [stats, setStats] = useState({
     active_threats: 0,
-    total_requests: 1542,
-    risk_score_avg: 12
+    total_requests: 0,
+    risk_score_avg: 0
   });
-  const [selectedThreat, setSelectedThreat] = useState<any>(null);
 
   useEffect(() => {
-    // Initial fetch for threats
-    fetch('http://localhost:8000/api/threats')
-      .then(res => res.json())
-      .then(data => {
-        setThreats(data);
-        if (data.length > 0) setSelectedThreat(data[0]);
-      })
-      .catch(err => console.error("Fetch threats error:", err));
+    const loadOverview = async () => {
+      try {
+        const [threatsRes, logsRes, statsRes, threatStatsRes] = await Promise.all([
+          fetch('http://localhost:8000/api/threats'),
+          fetch('http://localhost:8000/api/logs?limit=50'),
+          fetch('http://localhost:8000/api/stats'),
+          fetch('http://localhost:8000/api/threat-stats')
+        ]);
+
+        const threatsData = await threatsRes.json();
+        const logsData = await logsRes.json();
+        const statsData = await statsRes.json();
+        const threatStatsData = await threatStatsRes.json();
+
+        const allThreats = Array.isArray(threatsData) ? threatsData : [];
+        
+        // Get threat stats from dedicated endpoint (real database counts)
+        const resolvedCount = threatStatsData?.resolved_threats || 0;
+        const activeCount = threatStatsData?.active_threats || 0;
+        
+        setThreats(allThreats);
+        setResolvedThreats(resolvedCount);
+        setLogs(Array.isArray(logsData) ? logsData : []);
+        setStats({
+          active_threats: activeCount, // Use real count from database
+          total_requests: Number(statsData?.total_requests || 0),
+          risk_score_avg: Number(statsData?.risk_score_avg || 0)
+        });
+      } catch (err) {
+        console.error('Overview fetch error:', err);
+      }
+    };
+
+    loadOverview();
+    const pollInterval = setInterval(loadOverview, 5000);
 
     // WebSocket for real-time traffic
     const ws = new WebSocket('ws://localhost:8000/ws/traffic');
@@ -41,26 +67,35 @@ export default function Dashboard() {
         if (message.type === 'traffic') {
           const newLog = message.data;
           setLogs(prev => [...prev.slice(-49), newLog]);
-          setStats(message.stats);
-          
-          if (newLog.investigation) {
-            setThreats(prev => [newLog, ...prev.slice(0, 19)]);
-            setSelectedThreat(newLog);
+          if (message.stats) {
+            setStats({
+              active_threats: Number(message.stats.active_threats || 0),
+              total_requests: Number(message.stats.total_requests || 0),
+              risk_score_avg: Number(message.stats.risk_score_avg || 0)
+            });
           }
+        }
+
+        if (message.type === 'threat') {
+          const threat = message.data;
+          setThreats(prev => [threat, ...prev.slice(0, 49)]);
         }
       } catch (e) {
         console.error("WS error:", e);
       }
     };
 
-    return () => ws.close();
+    return () => {
+      ws.close();
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const statCards = [
     { label: 'Active Threats', value: stats.active_threats, icon: ShieldAlert, color: 'text-alert-red' },
+    { label: 'Resolved Threats', value: resolvedThreats, icon: CheckCircle2, color: 'text-success-green' },
     { label: 'Avg Risk Score', value: stats.risk_score_avg.toFixed(1), icon: Activity, color: 'text-warning-yellow' },
-    { label: 'Total Requests', value: stats.total_requests, icon: ShieldCheck, color: 'text-success-green' },
-    { label: 'AI Confidence', value: '98.4%', icon: Zap, color: 'text-accent-blue' },
+    { label: 'Total Requests', value: stats.total_requests, icon: ShieldCheck, color: 'text-accent-blue' },
   ];
 
   return (
@@ -96,7 +131,10 @@ export default function Dashboard() {
             </div>
             <div className="space-y-6">
               <ThreatPanel threats={threats} />
-              <InvestigationAgent threat={selectedThreat} />
+              <div className="bg-card p-6 rounded-xl border border-white/10">
+                <h3 className="text-sm font-semibold mb-2 text-gray-400 uppercase tracking-wider">Overview Health</h3>
+                <p className="text-sm text-gray-300">Live metrics are connected to backend APIs and update automatically via WebSocket.</p>
+              </div>
             </div>
           </div>
         </main>
