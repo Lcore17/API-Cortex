@@ -26,7 +26,7 @@ export default function VulnMapping({ data = defaultData, title = 'Vulnerability
     <div className="bg-card p-6 rounded-xl border border-white/10 h-full">
       <h3 className="text-sm font-semibold mb-6 text-gray-400 uppercase tracking-wider">{title}</h3>
       <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
           <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
             <PolarGrid stroke="#ffffff10" />
             <PolarAngleAxis dataKey="subject" tick={{ fill: '#9ca3af', fontSize: 10 }} />

@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import TrafficLog from '@/components/TrafficLog';
-import DashboardCharts from '@/components/DashboardCharts';
 import { AlertTriangle, Activity, Zap, Eye, MapPin, Clock, Play, Square } from 'lucide-react';
+
+const DashboardCharts = dynamic(() => import('@/components/DashboardCharts'), { ssr: false });
 
 export default function TrafficMonitor() {
   const [logs, setLogs] = useState<any[]>([]);

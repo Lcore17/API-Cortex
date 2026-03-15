@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import TrafficLog from '@/components/TrafficLog';
-import DashboardCharts from '@/components/DashboardCharts';
 import ThreatPanel from '@/components/ThreatPanel';
 import SimulationCenter from '@/components/SimulationCenter';
-import VulnMapping from '@/components/VulnMapping';
 import ThreatTimeline from '@/components/ThreatTimeline';
 import { Activity, ShieldAlert, ShieldCheck, CheckCircle2 } from 'lucide-react';
+
+const DashboardCharts = dynamic(() => import('@/components/DashboardCharts'), { ssr: false });
+const VulnMapping = dynamic(() => import('@/components/VulnMapping'), { ssr: false });
 
 export default function Dashboard() {
   const [logs, setLogs] = useState<any[]>([]);

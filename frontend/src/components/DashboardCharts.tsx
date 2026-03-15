@@ -33,7 +33,7 @@ export default function DashboardCharts({ data = [] }: ChartsProps) {
       <div className="bg-card p-6 rounded-xl border border-white/10 glow-blue">
         <h3 className="text-sm font-semibold mb-4 text-gray-400 uppercase tracking-wider">Request Latency (ms)</h3>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
@@ -57,7 +57,7 @@ export default function DashboardCharts({ data = [] }: ChartsProps) {
       <div className="bg-card p-6 rounded-xl border border-white/10 glow-purple">
         <h3 className="text-sm font-semibold mb-4 text-gray-400 uppercase tracking-wider">Anomaly Risk Profile</h3>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
               <XAxis dataKey="name" hide />

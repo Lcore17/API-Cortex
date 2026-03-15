@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
-import VulnMapping from '@/components/VulnMapping';
 import { Network, Shield, AlertCircle } from 'lucide-react';
+
+const VulnMapping = dynamic(() => import('@/components/VulnMapping'), { ssr: false });
 
 interface ApiNode {
   name: string;
