@@ -16,10 +16,9 @@ export default function TrafficMonitor() {
   const [requestCount, setRequestCount] = useState('5');
   const [isLoadingTraffic, setIsLoadingTraffic] = useState(false);
   const activityContainerRef = useRef<HTMLDivElement>(null);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(false);
 
   // Handle scroll events to prevent auto-scroll when user is reading
-  const handleActivityScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const handleActivityScroll = () => {
     // Do nothing - just prevent any auto-scroll behavior
   };
 
@@ -85,7 +84,7 @@ export default function TrafficMonitor() {
       const response = await fetch(`http://localhost:8000/api/start-traffic?count=${count}`, {
         method: 'POST'
       });
-      const data = await response.json();
+      await response.json();
       setTrafficStatus({
         auto_generate_enabled: true,
         auto_generate_count: count,

@@ -1,6 +1,5 @@
 'use client';
 
-import { useRef } from 'react';
 import { Terminal as TerminalIcon, ShieldCheck, ShieldAlert, HelpCircle, Globe, Database, MapPin, Eye, Clock } from 'lucide-react';
 
 interface TrafficLogProps {

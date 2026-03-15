@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldAlert, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 interface ThreatPanelProps {
   threats: any[];

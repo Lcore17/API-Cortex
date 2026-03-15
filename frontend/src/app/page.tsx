@@ -9,7 +9,7 @@ import ThreatPanel from '@/components/ThreatPanel';
 import SimulationCenter from '@/components/SimulationCenter';
 import VulnMapping from '@/components/VulnMapping';
 import ThreatTimeline from '@/components/ThreatTimeline';
-import { Activity, ShieldAlert, ShieldCheck, Zap, CheckCircle2 } from 'lucide-react';
+import { Activity, ShieldAlert, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export default function Dashboard() {
   const [logs, setLogs] = useState<any[]>([]);

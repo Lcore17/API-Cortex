@@ -32,7 +32,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-inter), sans-serif;
   min-height: 100vh;
   transition: background 0.3s ease, color 0.3s ease;
 }
@@ -64,7 +64,7 @@ body {
 
 /* Terminal Log Styling */
 .terminal-log {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-jetbrains-mono), monospace;
   scrollbar-width: thin;
   scrollbar-color: #7A5CFF #121826;
 }
